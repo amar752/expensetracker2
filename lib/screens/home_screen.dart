@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
 import 'package:lottie/lottie.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../providers/expense_provider.dart';
 import '../providers/category_provider.dart';
 import '../providers/balance_provider.dart';
@@ -793,24 +794,23 @@ class _HomeScreenState extends State<HomeScreen> {
   Future<void> _performReset(BuildContext context) async {
     try {
       final userProvider = context.read<UserProvider>();
-      final expenseProvider = context.read<ExpenseProvider>();
-      final categoryProvider = context.read<CategoryProvider>();
       final balanceProvider = context.read<BalanceProvider>();
       
-      // Delete current user (this will also clear their data)
+      // Delete current user (this will also clear their data from meta DB)
       if (userProvider.currentUser != null) {
         await userProvider.deleteUser(userProvider.currentUser!);
       }
       
-      // Clear all providers
-      await Future.wait([
-        expenseProvider.load(),
-        categoryProvider.load(),
-        balanceProvider.load(),
-      ]);
+      // Clear the balance from SharedPreferences
+      await balanceProvider.setBalance(0);
+      
+      // Clear the current user ID from SharedPreferences
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.remove('current_user_id');
+      await prefs.remove('total_balance');
       
       if (context.mounted) {
-        // Navigate to user setup screen
+        // Navigate to user setup screen and remove all previous routes
         Navigator.pushNamedAndRemoveUntil(
           context,
           '/user_setup',

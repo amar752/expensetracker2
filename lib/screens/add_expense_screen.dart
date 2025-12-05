@@ -680,9 +680,154 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
     }
   }
 
+  Future<void> _showSetInitialBalanceDialog(BalanceProvider balanceProvider) async {
+    final balanceController = TextEditingController();
+    
+    await showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) {
+        return AlertDialog(
+          backgroundColor: const Color(0xFF161936),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+          title: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF6C5CE7).withOpacity(0.2),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: const Icon(
+                  Icons.account_balance_wallet,
+                  color: Color(0xFF6C5CE7),
+                  size: 24,
+                ),
+              ),
+              const SizedBox(width: 12),
+              const Expanded(
+                child: Text(
+                  'Set Initial Balance',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Please set your initial balance before adding expenses.',
+                style: TextStyle(
+                  color: Colors.white.withOpacity(0.7),
+                  fontSize: 14,
+                ),
+              ),
+              const SizedBox(height: 20),
+              Container(
+                decoration: BoxDecoration(
+                  color: const Color(0xFF101225),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color: const Color(0xFF6C5CE7).withOpacity(0.3),
+                  ),
+                ),
+                child: TextField(
+                  controller: balanceController,
+                  autofocus: true,
+                  keyboardType: TextInputType.numberWithOptions(decimal: true),
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                  ),
+                  decoration: InputDecoration(
+                    prefixText: '₹ ',
+                    prefixStyle: const TextStyle(
+                      color: Color(0xFF6C5CE7),
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                    ),
+                    hintText: '0.00',
+                    hintStyle: TextStyle(
+                      color: Colors.white.withOpacity(0.3),
+                    ),
+                    border: InputBorder.none,
+                    contentPadding: const EdgeInsets.all(16),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: Text(
+                'Cancel',
+                style: TextStyle(
+                  color: Colors.white.withOpacity(0.6),
+                ),
+              ),
+            ),
+            ElevatedButton(
+              onPressed: () async {
+                final balanceText = balanceController.text.trim();
+                final balance = double.tryParse(balanceText);
+                
+                if (balance == null || balance < 0) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Please enter a valid balance'),
+                      backgroundColor: Colors.redAccent,
+                    ),
+                  );
+                  return;
+                }
+                
+                await balanceProvider.setBalance(balance);
+                if (mounted) {
+                  Navigator.of(context).pop();
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('Initial balance set to ₹${balance.toStringAsFixed(2)}'),
+                      backgroundColor: const Color(0xFF4CAF50),
+                    ),
+                  );
+                }
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF6C5CE7),
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
+              ),
+              child: const Text('Set Balance'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
   void _saveExpense() async {
     debugPrint('_saveExpense called');
     try {
+      // Check if initial balance has been set
+      final balanceProvider = context.read<BalanceProvider>();
+      if (!balanceProvider.isInitialBalanceSet) {
+        // Show dialog to set initial balance
+        await _showSetInitialBalanceDialog(balanceProvider);
+        return;
+      }
+
       if (!_formKey.currentState!.validate()) {
         debugPrint('Form validation failed');
         ScaffoldMessenger.of(context).showSnackBar(
@@ -719,7 +864,6 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
       );
 
       // Check balance before saving: if expense > available balance, show error.
-      final balanceProvider = context.read<BalanceProvider>();
       final currentBalance = balanceProvider.totalBalance;
       if (parsedAmount > currentBalance) {
         ScaffoldMessenger.of(

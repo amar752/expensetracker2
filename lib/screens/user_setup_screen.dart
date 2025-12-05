@@ -18,7 +18,6 @@ class _UserSetupScreenState extends State<UserSetupScreen>
   final _formKey = GlobalKey<FormState>();
   final _nameController = TextEditingController();
   final _emailController = TextEditingController();
-  final _balanceController = TextEditingController();
   bool _saving = false;
   
   late AnimationController _fadeController;
@@ -56,7 +55,6 @@ class _UserSetupScreenState extends State<UserSetupScreen>
   void dispose() {
     _nameController.dispose();
     _emailController.dispose();
-    _balanceController.dispose();
     _fadeController.dispose();
     _scaleController.dispose();
     super.dispose();
@@ -76,14 +74,7 @@ class _UserSetupScreenState extends State<UserSetupScreen>
       );
       
       if (created != null && mounted) {
-        // Set initial balance from user input (required field)
-        final balanceText = _balanceController.text.trim();
-        final initialBalance = double.tryParse(balanceText) ?? 0;
-        
-        // Set the balance
-        await context.read<BalanceProvider>().setBalance(initialBalance);
-        
-        // Load initial data
+        // Load initial data (balance will be prompted when adding first expense)
         await Future.wait([
           context.read<ExpenseProvider>().load(),
           context.read<CategoryProvider>().load(),
@@ -264,63 +255,6 @@ class _UserSetupScreenState extends State<UserSetupScreen>
                           ),
                           keyboardType: TextInputType.emailAddress,
                           textInputAction: TextInputAction.next,
-                        ),
-                      ),
-                      const SizedBox(height: 16),
-                      
-                      // Initial Balance Field
-                      Container(
-                        decoration: BoxDecoration(
-                          color: const Color(0xFF161936).withOpacity(0.6),
-                          borderRadius: BorderRadius.circular(16),
-                          border: Border.all(
-                            color: Colors.white.withOpacity(0.1),
-                            width: 1,
-                          ),
-                        ),
-                        child: TextFormField(
-                          controller: _balanceController,
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 16,
-                          ),
-                          decoration: InputDecoration(
-                            labelText: 'Initial Balance',
-                            labelStyle: TextStyle(
-                              color: Colors.white.withOpacity(0.7),
-                            ),
-                            prefixIcon: const Icon(
-                              Icons.account_balance_wallet_outlined,
-                              color: Color(0xFF6C5CE7),
-                            ),
-                            prefixText: '₹ ',
-                            prefixStyle: const TextStyle(
-                              color: Color(0xFF6C5CE7),
-                              fontSize: 16,
-                            ),
-                            border: InputBorder.none,
-                            contentPadding: const EdgeInsets.all(20),
-                            hintText: '0',
-                            hintStyle: TextStyle(
-                              color: Colors.white.withOpacity(0.3),
-                            ),
-                          ),
-                          keyboardType: TextInputType.number,
-                          textInputAction: TextInputAction.done,
-                          onFieldSubmitted: (_) => _save(),
-                          validator: (v) {
-                            if (v == null || v.trim().isEmpty) {
-                              return 'Please enter your initial balance';
-                            }
-                            final balance = double.tryParse(v.trim());
-                            if (balance == null) {
-                              return 'Please enter a valid number';
-                            }
-                            if (balance < 0) {
-                              return 'Balance cannot be negative';
-                            }
-                            return null;
-                          },
                         ),
                       ),
                       const SizedBox(height: 40),
